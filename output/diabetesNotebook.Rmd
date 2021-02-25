@@ -1,0 +1,649 @@
+---
+title: "Исследование многопараметрических данных"
+author: "Юрченков Иван Александрович"
+date: "18 02 2021"
+output: 
+  word_document: 
+    toc: yes
+    highlight: haddock
+    fig_width: 8
+    fig_height: 8
+    fig_caption: yes
+    keep_md: yes
+---
+
+## Введение
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(knitr)
+```
+
+Данные, используемые в текущем проекте, содержат ряд диагностических показателей диабета 2 типа у женщин из индийского наследия Пима, а также того, имеет ли индивидуум диабет 2 типа.
+
+Всего имеется 768 наблюдений и 9 переменных. Переменные в наборе данных:
+
+-   Беременности
+-   Глюкоза - концентрация глюкозы в плазме крови после 2-часового орального теста на толерантность к глюкозе.
+-   BloodPressure - Диастолическое артериальное давление (мм / HG).
+-   SkinThickness - толщина трицепса (мм).
+-   Инсулин - 2 часа сывороточного инсулина (м.е. / мл).  https://ru.wikipedia.org/wiki/%D0%9C%D0%B5%D0%B6%D0%B4%D1%83%D0%BD%D0%B0%D1%80%D0%BE%D0%B4%D0%BD%D0%B0%D1%8F_%D0%B5%D0%B4%D0%B8%D0%BD%D0%B8%D1%86%D0%B0
+-   ИМТ - индекс массы тела (кг / м в квадрате)
+-   DiabetesPedigreeFunction - функция, которая определяет риск развития диабета 2 типа на основе семейного анамнеза. Чем больше функция, тем выше риск развития диабета 2 типа.
+-   Возраст.
+-   Результат - диагностирован ли у человека диабет 2 типа (1 = да, 0 = нет).
+
+Особенно интересным атрибутом, использованным в исследовании, была «Родословная функция диабета». Он предоставил некоторые данные об истории сахарного диабета у родственников и генетических отношениях этих родственников с пациентом. Эта мера генетического влияния дала нам представление о наследственном риске, который может возникнуть при появлении сахарного диабета. Основываясь на наблюдениях в последующем разделе, неясно, насколько хорошо эта функция предсказывает начало диабета.
+
+```{r import, echo= FALSE}
+# Первичный импорт данных -------------------------------------------------
+# Имя файла
+datafile = "diabetes.csv"
+
+# Импорт файла
+df <- read.csv(file = "diabetes.csv", )
+rm("datafile")
+
+column_name <- colnames(df)
+column_mean <- c("Number of times pregnant", 
+                 "Plasma glucose concentration a 2 hours in an oral glucose tolerance test", 
+                 "Diastolic blood pressure (mm Hg)",
+                 "Triceps skin fold thickness (mm)",
+                 "2-Hour serum insulin (mu U/ml)",
+                 "Body mass index (weight in kg/(height in m)^2)",
+                 "Diabetes pedigree function",
+                 "Age (years)",
+                 "Class variable (0 or 1) 268 of 768 are 1, the others are 0")
+column_mean_ru <- c("Количество раз беременна",
+                    "Концентрация глюкозы в плазме через 2 часа при пероральном тесте на толерантность к глюкозе",
+                    "Диастолическое артериальное давление (мм рт. Ст.)",
+                    "Толщина кожной складки трицепса (мм)",
+                    "2-часовой сывороточный инсулин (мЕд/мл, мМЕ/мл – международные единицы в 1 миллилитре, сколько микрограмм того или иного вещества соответствуют условной единице биологической активности)",
+                    "Индекс массы тела (вес в кг / (рост в м) ^ 2)",
+                    "Родословная диабетическая функция",
+                    "Возраст",
+                    "Переменная класса (0 или 1) 268 из 768 равны 1, остальные равны 0")
+ed_val <- c("шт", "ммоль/л", "мм рт. ст.", "мм", "мЕд/мл", "кг / (м^2)", "у.е.", "время", "логическая переменная")
+
+df_meta <- data.frame(colname = column_name, 
+                      colmean = column_mean, 
+                      colmean_ru = column_mean_ru, 
+                      ed_val = ed_val)
+rm("column_mean", "column_mean_ru", "column_name", "ed_val")
+```
+
+Посмотрим на структуру данных
+
+```{r, echo=FALSE}
+str(df)
+```
+
+Выведем все метаданные
+
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| Название поля            | Трактовка                                                                | Трактовка на русском                                                                                                                                 | Единицы измерения |
++==========================+==========================================================================+======================================================================================================================================================+===================+
+| Pregnancies              | Number of times pregnant                                                 | Беременностей                                                                                                                                        | шт.               |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| Glucose                  | Plasma glucose concentration a 2 hours in an oral glucose tolerance test | Концентрация глюкозы в плазме через 2 часа при пероральном тесте на толерантность к глюкозе                                                          | ммоль/л           |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| BloodPressure            | Diastolic blood pressure (mm Hg)                                         | Диастолическое артериальное давление (мм рт. Ст.)                                                                                                    | мм.рт.ст          |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| SkinThickness            | Triceps skin fold thickness (mm)                                         | Толщина кожной складки трицепса (мм)                                                                                                                 | мм                |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| Insulin                  | 2-Hour serum insulin (mu U/ml)                                           | 2-часовой сывороточный инсулин (мЕд/мл, мМЕ/мл) - сколько микрограмм того или иного вещества соответствуют условной единице биологической активности | мЕд/мл            |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| BMI                      | Body mass index (weight in kg/(height in m)\^2)                          | Индекс массы тела (вес в кг / (рост в м) \^ 2)                                                                                                       | кг / (м\^2)       |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| DiabetesPedigreeFunction | Diabetes pedigree function                                               | Родословная диабетическая функция                                                                                                                    | у.е.              |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| Age                      | Age (years)                                                              | Возраст                                                                                                                                              | Годы              |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+| Outcome                  | Class variable (0 or 1) 268 of 768 are 1, the others are 0               | Переменная класса (0 или 1) 268 из 768 равны 1, остальные равны 0                                                                                    | логическая        |
++--------------------------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------+
+
+: Метаданные полей
+
+
+## Предварительный анализ
+
+Сначала я изучил каждый атрибут и рассмотрел параметры распространения, подготовленные Weka Explorer. Я заметил, что:
+
+-   Атрибуты preg и age являются целыми числами.
+-   Население, как правило, молодое, менее 50 лет.
+-   Некоторые атрибуты, где существует нулевое значение, кажутся ошибками в данных (например, Plas, Pres, Skin, InS и Mass).
+
+Изучив распределение значений классов, я заметил, что существует 500 отрицательных случаев (65,1%) и 258 положительных случаев (34,9%).
+
+```{r, echo=FALSE, dpi=1024}
+plot(x = subset(df, select = -Outcome), cex = I(0.5), col = df$Outcome + 1, pch = 19)
+```
+
+
+
+Рисунок 1. Корреляционная карта признаков данных.
+
+```{r bloodpressure density, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df, aes(x = BloodPressure)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df[[3]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Кровеносное давление, мм.рт.ст", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для кровеносного давления") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20)
+```
+
+```{r glucoze density, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df, aes(x = Glucose)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df[[2]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Глюкоза, ммоль/л", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для глюкозы") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20)
+```
+
+```{r skinthickness density, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df, aes(x = SkinThickness)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df[[4]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Толщина кожи трицепса, мм", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для тощины кожи трицепса") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20)
+```
+
+```{r insulin density, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df, aes(x = Insulin)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df[[5]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Инсулин, мЕд/мл", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для инсулина") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20)
+```
+
+```{r BMI density, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df, aes(x = BMI)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df[[6]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "ИМТ индекс массы тела, кг/(м^2)", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для ИМТ") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20)
+```
+
+```{r entfamily density, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df, aes(x = DiabetesPedigreeFunction)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df[[7]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Родословная диабетическая функция", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для РДФ") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20)
+```
+
+```{r age density, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df, aes(x = Age)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df[[8]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Возраст в годах", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для возраста") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20)
+```
+
+```{r hist detailed, dpi = 1024, echo = FALSE}
+plot(table(cut(df$Age, breaks = 20)))
+```
+
+Просмотр гистограмм всех атрибутов в наборе данных показывает нам, что:
+
+-   Некоторые атрибуты выглядят нормально распределенными (plas, pres, skin и mass).
+-   Некоторые из атрибутов выглядят так, как будто они имеют экспоненциальное распределение (preg, ins, pedi, age).
+-   Возраст, вероятно, должен иметь нормальное распределение, ограничения на сбор данных могли исказить распределение.
+-   Тестирование на нормальность (график нормальности) может представлять интерес. Мы могли бы посмотреть на подгонку данных к нормальному распределению.
+
+Просмотр диаграмм разброса всех атрибутов в наборе данных показывает, что:
+
+-   Не существует очевидной связи между возрастом и началом диабета.
+-   Не существует очевидной связи между функцией педи и началом диабета.
+-   Это может свидетельствовать о том, что диабет не является наследственным или что функция родословной диабета нуждается в работе.
+-   Более высокие значения плазмы в сочетании с более высокими значениями для возраста, педиатрии, массы, инсулиновой, кожной, жировой ткани и прегина, как правило, показывают большую вероятность положительного результата теста на диабет.
+
+
+
+## Очистка данных
+
+По предъявленным распределениям для некоторых измерений можно заранее принять тот факт, что неокторые данные были собраны ошибочно. На основе таких величин можно провести некоторую фильтрацию данных измерений
+
+```{r filter, echo=FALSE}
+df_filtered <- df %>% dplyr::filter(BMI != 0 & 
+                                      SkinThickness != 0 & 
+                                      Glucose != 0 & 
+                                      BloodPressure != 0 & 
+                                      Insulin !=0)
+```
+
+
+```{r, echo=FALSE}
+str(df_filtered)
+```
+
+
+```{r, echo=FALSE, dpi=1024}
+plot(x = subset(df_filtered, select = -Outcome), cex = I(0.5), col = df$Outcome + 1, pch = 19)
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+DPF_levels <- c(0.96, 1.4)
+ggplot2::ggplot(df_filtered, mapping = aes(y = sort(DiabetesPedigreeFunction), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Записи",
+                y = "Родословная диабетическая функция") +
+  ggplot2::theme_bw() + 
+  ggplot2::geom_hline(color = "red", yintercept = DPF_levels, lty = 2) +
+  ggplot2::geom_text(label = paste("Критический уровень =", 
+                                   DPF_levels[1]), 
+                     aes(x = 200, 
+                         y = DPF_levels[1] + DPF_levels[1]/10)) + 
+  ggplot2::geom_text(label = paste("Критический уровень =", 
+                                   DPF_levels[2]), 
+                     aes(x = 200, 
+                         y = DPF_levels[2] + DPF_levels[2]/10))
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+BMI_levels <- c(23.75, 40, 47)
+ggplot2::ggplot(df_filtered, mapping = aes(y = sort(BMI), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Номера записей в таблице",
+                y = "ИНдекс массы тела") +
+  ggplot2::theme_bw() +
+  ggplot2::geom_hline(yintercept = BMI_levels, col = "red", lty = 2)
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+Thick_levels <- c(12, 42, 52)
+ggplot2::ggplot(df_filtered, mapping = aes(y = sort(SkinThickness), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсотированных величин",
+                x = "Номера записией в таблице",
+                y = "Толщина кожи трицепса") +
+  ggplot2::theme_bw() +
+  ggplot2::geom_hline(yintercept = Thick_levels, col = "red", lty = 2)
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+insulin_levels <- c(40, 325, 500)
+ggplot2::ggplot(df_filtered, mapping = aes(y = sort(Insulin), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Номера записей в таблице данных",
+                y = "Инсулин") +
+  ggplot2::theme_bw() +
+  ggplot2::geom_hline(yintercept = insulin_levels, col = "red", lty = 2)
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+Glucose_levels <- c(80, 100, 110, 130, 157, 180)
+ggplot2::ggplot(df_filtered, mapping = aes(y = sort(Glucose), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Номер записи в таблице данных",
+                y = "Тест глюкозы") +
+  ggplot2::theme_bw() +
+  ggplot2::geom_hline(yintercept = Glucose_levels, lwd = I(0.5), col = "red", lty = 2)
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+Press_levels <- c(58, 90)
+ggplot2::ggplot(df_filtered, mapping = aes(y = sort(BloodPressure), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Номер записи в таблице данных",
+                y = "Дистолическое артериальное давление") +
+  ggplot2::theme_bw() + 
+  ggplot2::geom_hline(yintercept = Press_levels, col = "red", lty = 2)
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+ggplot2::ggplot(df_filtered, mapping = aes(y = sort(Age), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Номер записи в таблице данных",
+                y = "Возраст в годах") +
+  ggplot2::theme_bw()
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+ggplot2::ggplot(df_filtered, mapping = aes(y = log(sort(Pregnancies) + 1), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Номер записи в таблице данных",
+                y = "Беременности в количестве единиц") +
+  ggplot2::theme_bw()
+```
+
+
+```{r bloodpressure density filtered, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df_filtered, aes(x = BloodPressure)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df_filtered[[3]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Кровеносное давление, мм.рт.ст", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для кровеносного давления") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::geom_vline(xintercept = Press_levels, lty = 2, col = "blue")
+```
+
+
+```{r glucoze density filtered, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df_filtered, aes(x = Glucose)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df_filtered[[2]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Глюкоза, ммоль/л", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для глюкозы") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::geom_vline(xintercept = Glucose_levels, lty = 2, col = "blue")
+```
+
+
+```{r skinthickness density filtered, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df_filtered, aes(x = SkinThickness)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df_filtered[[4]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Толщина кожи трицепса, мм", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для тощины кожи трицепса") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::geom_vline(xintercept = Thick_levels, lty = 2, col = "blue")
+```
+
+
+```{r insulin density filtered, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df_filtered, aes(x = Insulin)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df_filtered[[5]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Инсулин, мЕд/мл", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для инсулина") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::geom_vline(xintercept = insulin_levels, lty = 2, col = "blue")
+```
+
+
+```{r BMI density filtered, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df_filtered, aes(x = BMI)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df_filtered[[6]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "ИМТ индекс массы тела, кг/(м^2)", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для ИМТ") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::geom_vline(xintercept = BMI_levels, lty = 2, col = "blue")
+```
+
+
+```{r entfamily density filtered, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df_filtered, aes(x = DiabetesPedigreeFunction)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df_filtered[[7]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Родословная диабетическая функция", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для РДФ") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::geom_vline(xintercept = DPF_levels, lty = 2, col = "blue")
+```
+
+
+```{r age density filtered, echo=FALSE, dpi = 1024}
+ggplot2::ggplot(df_filtered, aes(x = Age)) + 
+    geom_histogram(aes(y = ..density..), 
+                 binwidth = density(df_filtered[[8]])$bw, 
+                 color = "black", 
+                 fill = "grey") +
+  ggplot2::geom_density(fill = "red", alpha = I(0.3)) +
+  ggplot2::labs(x = "Возраст в годах", 
+                subtitle = "Оцениваемая плотность распределения ядерной функцией плотности",
+                y = "Оцениваемая вероятность",
+                title = "Ядерная функция плотности распределения для возраста") +
+  ggplot2::scale_x_continuous(n.breaks = 20) +
+  ggplot2::scale_y_continuous(n.breaks = 20)
+```
+
+## Парные корреляции
+
+```{r, dpi=1024, echo = FALSE}
+ggplot2::ggplot(data = df_filtered, aes(x = Glucose, y = Insulin)) +
+  ggplot2::geom_point(color = df_filtered$Outcome + 2) +
+  ggplot2::geom_hline(yintercept = insulin_levels, lty = 3, col = "blue") +
+  ggplot2::geom_vline(xintercept = Glucose_levels, lty = 3, col = "blue") +
+  ggplot2::theme_bw() +
+  ggplot2::labs(title = "Парная корреляция")
+```
+
+```{r, dpi = 1024, echo=FALSE}
+ggplot2::ggplot(data = df_filtered, aes(x = BMI, y = SkinThickness)) +
+  ggplot2::geom_point(color = df_filtered$Outcome + 2) +
+  ggplot2::geom_hline(yintercept = Thick_levels, lty = 3, col = "blue") +
+  ggplot2::geom_vline(xintercept = BMI_levels, lty = 3, col = "blue") +
+  ggplot2::theme_bw() +
+  ggplot2::labs(title = "Парная корреляция")
+```
+
+```{r, dpi = 1024, echo=FALSE}
+ggplot2::ggplot(data = df_filtered, aes(x = BloodPressure, y = Age)) +
+  ggplot2::geom_point(color = df_filtered$Outcome + 2) +
+  ggplot2::geom_vline(xintercept = Press_levels, lty = 3, col = "blue") +
+  ggplot2::theme_bw() +
+  ggplot2::labs(title = "Парная корреляция")
+```
+
+```{r, dpi = 1024, echo = FALSE}
+ggplot2::ggplot(data = df_filtered, aes(x = Glucose, y = BMI)) +
+  ggplot2::geom_point(color = df_filtered$Outcome + 2) +
+  ggplot2::geom_vline(xintercept = Glucose_levels, lty = 3, col = "blue") +
+  ggplot2::geom_hline(yintercept = BMI_levels, lty = 3, col = "blue") +
+  ggplot2::theme_bw() +
+  ggplot2::labs(title = "Парная корреляция")
+```
+
+## Перевод величин в систему СИ
+
+
+\[
+  \kappa_1 = BloodPressure \cdot Age^2 \cdot Insulin^{-1} \cdot SkinThickness^2
+\]
+
+
+```{r}
+df_FM <- dplyr::mutate(.data = df_filtered, 
+                       Glu_SE = Glucose * 6 * 10 ^ (-23) * 10^3,
+                       Ins_SE = Insulin * 34.7 * 10^-3,
+                       BMI_SE = BMI,
+                       ST_SE = SkinThickness * 10^(-3),
+                       Press_SE = BloodPressure * 133.32,
+                       Years_SE = Age * 365.25 * 24 * 60 * 60)
+df_FM$Kappa1 <- df_FM$Press_SE * df_FM$Years_SE^(2) * df_FM$Ins_SE^(-1) * df_FM$ST_SE^(2)
+```
+
+
+
+```{r, dpi=1024, echo=FALSE}
+kappa1_levels_log <- c(40.5, 41.4, 42.8, 43.7)
+ggplot2::ggplot(df_FM, mapping = aes(y = log(sort(Kappa1)), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Номер записи в таблице данных",
+                y = "Первая безразмерная величина") +
+  ggplot2::theme_bw() +
+  ggplot2::geom_hline(yintercept = kappa1_levels_log, lty = 2, col = "red")
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+ggplot2::ggplot(data = df_FM, aes(x = Glucose, y = log(Kappa1))) +
+  ggplot2::geom_point(color = df_FM$Outcome + 2) +
+  ggplot2::geom_vline(xintercept = Glucose_levels, lty = 3, col = "blue") +
+  ggplot2::geom_hline(yintercept = kappa1_levels_log, lty = 3, col = "blue") +
+  ggplot2::theme_bw() +
+  ggplot2::labs(title = "Парная корреляция")
+```
+
+
+
+```{r, dpi=1024, echo=FALSE}
+df_FM$Kappa2 <- df_FM$Ins_SE * df_FM$BMI^(-1) * df_FM$ST_SE
+```
+
+```{r, dpi=1024, echo=FALSE}
+kappa2_levels_log <- c(-6.75, -6.25, -5, -4.35)
+ggplot2::ggplot(df_FM, mapping = aes(y = log(sort(Kappa2)), 
+                                           x = (1:nrow(df_filtered)), 
+                                           color = Outcome)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::scale_x_continuous(n.breaks = 20) + 
+  ggplot2::scale_y_continuous(n.breaks = 20) +
+  ggplot2::labs(title = "Распределение отсортированных величин",
+                x = "Номер записи в таблице данных",
+                y = "Вторая безразмерная величина") +
+  ggplot2::theme_bw() +
+  ggplot2::geom_hline(yintercept = kappa2_levels_log, lty = 2, col = "red")
+```
+
+
+```{r, dpi=1024, echo=FALSE}
+ggplot2::ggplot(data = df_FM, aes(x = log(Kappa2), y = log(Kappa1))) +
+  ggplot2::geom_point(color = df_FM$Outcome + 2) +
+  ggplot2::geom_vline(xintercept = kappa2_levels_log, lty = 3, col = "blue") +
+  ggplot2::geom_hline(yintercept = kappa1_levels_log, lty = 3, col = "blue") +
+  ggplot2::theme_bw() +
+  ggplot2::labs(title = "Парная корреляция")
+```
+
