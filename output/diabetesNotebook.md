@@ -213,16 +213,6 @@ output:
 
 
 
-```r
-df_FM <- dplyr::mutate(.data = df_filtered, 
-                       Glu_SE = Glucose * 6 * 10 ^ (-23) * 10^3,
-                       Ins_SE = Insulin * 34.7 * 10^-3,
-                       BMI_SE = BMI,
-                       ST_SE = SkinThickness * 10^(-3),
-                       Press_SE = BloodPressure * 133.32,
-                       Years_SE = Age * 365.25 * 24 * 60 * 60)
-df_FM$Kappa1 <- df_FM$Press_SE * df_FM$Years_SE^(2) * df_FM$Ins_SE^(-1) * df_FM$ST_SE^(2)
-```
 
 
 
@@ -239,4 +229,446 @@ df_FM$Kappa1 <- df_FM$Press_SE * df_FM$Years_SE^(2) * df_FM$Ins_SE^(-1) * df_FM$
 
 
 ![](diabetesNotebook_files/figure-docx/unnamed-chunk-22-1.png)<!-- -->
+
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-23-1.png)<!-- -->
+
+
+
+## Метод главных компонент
+
+
+
+
+
+
+
+```
+## Loading required package: usethis
+```
+
+```
+## Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa
+```
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-25-1.png)<!-- -->
+
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-26-1.png)<!-- -->
+### Модель на две главные компоненты
+
+
+```
+## 
+## Call:
+## glm(formula = df_filtered_train$Outcome ~ res.pca$x[, 1] + res.pca$x[, 
+##     2], family = binomial)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -2.4146  -0.7842  -0.4330   0.8502   2.3556  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    -0.86837    0.14570  -5.960 2.52e-09 ***
+## res.pca$x[, 1]  0.83081    0.10551   7.874 3.43e-15 ***
+## res.pca$x[, 2]  0.03587    0.10391   0.345     0.73    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 402.89  on 313  degrees of freedom
+## Residual deviance: 313.74  on 311  degrees of freedom
+## AIC: 319.74
+## 
+## Number of Fisher Scoring iterations: 4
+```
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-27-1.png)<!-- -->
+
+
+```
+## $matrix
+##        real0 real1
+## model0   176    54
+## model1    31    53
+## 
+## $precision
+## [1] 0.6309524
+## 
+## $recall
+## [1] 0.4953271
+## 
+## $F1
+## [1] 0.5549738
+## 
+## $accuracy
+## [1] 0.7292994
+```
+
+### Модель на три главные компоненты
+
+
+
+```
+## 
+## Call:
+## glm(formula = df_filtered_train$Outcome ~ res.pca$x[, 1] + res.pca$x[, 
+##     2] + res.pca$x[, 3], family = binomial)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -3.1393  -0.7339  -0.4349   0.8144   2.2778  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    -0.85402    0.14705  -5.808 6.34e-09 ***
+## res.pca$x[, 1]  0.86401    0.10983   7.867 3.63e-15 ***
+## res.pca$x[, 2]  0.03691    0.10585   0.349  0.72729    
+## res.pca$x[, 3] -0.40833    0.14009  -2.915  0.00356 ** 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 402.89  on 313  degrees of freedom
+## Residual deviance: 304.57  on 310  degrees of freedom
+## AIC: 312.57
+## 
+## Number of Fisher Scoring iterations: 4
+```
+
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-29-1.png)<!-- -->![](diabetesNotebook_files/figure-docx/unnamed-chunk-29-2.png)<!-- -->![](diabetesNotebook_files/figure-docx/unnamed-chunk-29-3.png)<!-- -->
+
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-30-1.png)<!-- -->
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-31-1.png)<!-- -->
+
+
+
+```
+## $matrix
+##        real0 real1
+## model0   181    50
+## model1    26    57
+## 
+## $precision
+## [1] 0.686747
+## 
+## $recall
+## [1] 0.5327103
+## 
+## $F1
+## [1] 0.6
+## 
+## $accuracy
+## [1] 0.7579618
+```
+
+### Модель на четыре главные компоненты
+
+
+
+```
+## 
+## Call:
+## glm(formula = df_filtered_train$Outcome ~ res.pca$x[, 1] + res.pca$x[, 
+##     2] + res.pca$x[, 3] + res.pca$x[, 4], family = binomial)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -3.2832  -0.7330  -0.4183   0.8169   2.2556  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    -0.85479    0.14721  -5.806 6.38e-09 ***
+## res.pca$x[, 1]  0.87135    0.11098   7.851 4.11e-15 ***
+## res.pca$x[, 2]  0.04701    0.10718   0.439  0.66099    
+## res.pca$x[, 3] -0.41496    0.14027  -2.958  0.00309 ** 
+## res.pca$x[, 4] -0.15035    0.14775  -1.018  0.30886    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 402.89  on 313  degrees of freedom
+## Residual deviance: 303.52  on 309  degrees of freedom
+## AIC: 313.52
+## 
+## Number of Fisher Scoring iterations: 5
+```
+
+```
+## $matrix
+##        real0 real1
+## model0   182    49
+## model1    25    58
+## 
+## $precision
+## [1] 0.6987952
+## 
+## $recall
+## [1] 0.5420561
+## 
+## $F1
+## [1] 0.6105263
+## 
+## $accuracy
+## [1] 0.7643312
+```
+
+### Модель на 5 главных компонент
+
+
+```
+## 
+## Call:
+## glm(formula = df_filtered_train$Outcome ~ res.pca$x[, 1] + res.pca$x[, 
+##     2] + res.pca$x[, 3] + res.pca$x[, 4] + res.pca$x[, 5], family = binomial)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -3.3043  -0.7288  -0.4171   0.8130   2.2416  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    -0.85373    0.14723  -5.799 6.68e-09 ***
+## res.pca$x[, 1]  0.87197    0.11106   7.851 4.12e-15 ***
+## res.pca$x[, 2]  0.04693    0.10738   0.437  0.66206    
+## res.pca$x[, 3] -0.41512    0.14027  -2.959  0.00308 ** 
+## res.pca$x[, 4] -0.15121    0.14778  -1.023  0.30618    
+## res.pca$x[, 5] -0.04143    0.16985  -0.244  0.80729    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 402.89  on 313  degrees of freedom
+## Residual deviance: 303.47  on 308  degrees of freedom
+## AIC: 315.47
+## 
+## Number of Fisher Scoring iterations: 5
+```
+
+```
+## $matrix
+##        real0 real1
+## model0   182    48
+## model1    25    59
+## 
+## $precision
+## [1] 0.702381
+## 
+## $recall
+## [1] 0.5514019
+## 
+## $F1
+## [1] 0.617801
+## 
+## $accuracy
+## [1] 0.7675159
+```
+
+
+## Модель на 6 главных компонент
+
+
+```
+## 
+## Call:
+## glm(formula = df_filtered_train$Outcome ~ res.pca$x[, 1] + res.pca$x[, 
+##     2] + res.pca$x[, 3] + res.pca$x[, 4] + res.pca$x[, 5] + res.pca$x[, 
+##     6], family = binomial)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -2.9956  -0.6834  -0.3927   0.7355   2.2925  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    -0.90808    0.15321  -5.927 3.08e-09 ***
+## res.pca$x[, 1]  0.90361    0.11444   7.896 2.88e-15 ***
+## res.pca$x[, 2]  0.06140    0.11054   0.555 0.578560    
+## res.pca$x[, 3] -0.39560    0.13851  -2.856 0.004289 ** 
+## res.pca$x[, 4] -0.18577    0.15467  -1.201 0.229714    
+## res.pca$x[, 5] -0.04867    0.17464  -0.279 0.780465    
+## res.pca$x[, 6]  0.75741    0.21866   3.464 0.000532 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 402.89  on 313  degrees of freedom
+## Residual deviance: 291.06  on 307  degrees of freedom
+## AIC: 305.06
+## 
+## Number of Fisher Scoring iterations: 5
+```
+
+```
+## $matrix
+##        real0 real1
+## model0   180    50
+## model1    27    57
+## 
+## $precision
+## [1] 0.6785714
+## 
+## $recall
+## [1] 0.5327103
+## 
+## $F1
+## [1] 0.5968586
+## 
+## $accuracy
+## [1] 0.7547771
+```
+
+
+### Модель на 7 гланых компонент
+
+
+```
+## 
+## Call:
+## glm(formula = df_filtered_train$Outcome ~ res.pca$x[, 1] + res.pca$x[, 
+##     2] + res.pca$x[, 3] + res.pca$x[, 4] + res.pca$x[, 5] + res.pca$x[, 
+##     6] + res.pca$x[, 7], family = binomial)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -2.9531  -0.6856  -0.3827   0.7304   2.2610  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    -0.90957    0.15339  -5.930 3.04e-09 ***
+## res.pca$x[, 1]  0.90834    0.11518   7.886 3.12e-15 ***
+## res.pca$x[, 2]  0.06283    0.11103   0.566 0.571490    
+## res.pca$x[, 3] -0.39065    0.13808  -2.829 0.004667 ** 
+## res.pca$x[, 4] -0.19737    0.15640  -1.262 0.206945    
+## res.pca$x[, 5] -0.04817    0.17458  -0.276 0.782599    
+## res.pca$x[, 6]  0.76520    0.21892   3.495 0.000474 ***
+## res.pca$x[, 7]  0.26811    0.25417   1.055 0.291494    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 402.89  on 313  degrees of freedom
+## Residual deviance: 289.94  on 306  degrees of freedom
+## AIC: 305.94
+## 
+## Number of Fisher Scoring iterations: 5
+```
+
+```
+## $matrix
+##        real0 real1
+## model0   183    50
+## model1    24    57
+## 
+## $precision
+## [1] 0.7037037
+## 
+## $recall
+## [1] 0.5327103
+## 
+## $F1
+## [1] 0.606383
+## 
+## $accuracy
+## [1] 0.7643312
+```
+
+
+### Модель на 8 гланых компонент
+
+
+```
+## 
+## Call:
+## glm(formula = df_filtered_train$Outcome ~ res.pca$x[, 1] + res.pca$x[, 
+##     2] + res.pca$x[, 3] + res.pca$x[, 4] + res.pca$x[, 5] + res.pca$x[, 
+##     6] + res.pca$x[, 7] + res.pca$x[, 8], family = binomial)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -2.8800  -0.6865  -0.3863   0.7187   2.2281  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    -0.90990    0.15352  -5.927 3.09e-09 ***
+## res.pca$x[, 1]  0.90736    0.11490   7.897 2.85e-15 ***
+## res.pca$x[, 2]  0.06438    0.11158   0.577 0.563970    
+## res.pca$x[, 3] -0.39399    0.13953  -2.824 0.004747 ** 
+## res.pca$x[, 4] -0.19372    0.15696  -1.234 0.217135    
+## res.pca$x[, 5] -0.04431    0.17385  -0.255 0.798820    
+## res.pca$x[, 6]  0.76354    0.22011   3.469 0.000523 ***
+## res.pca$x[, 7]  0.27861    0.25567   1.090 0.275837    
+## res.pca$x[, 8] -0.21544    0.27058  -0.796 0.425905    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 402.89  on 313  degrees of freedom
+## Residual deviance: 289.30  on 305  degrees of freedom
+## AIC: 307.3
+## 
+## Number of Fisher Scoring iterations: 5
+```
+
+```
+## $matrix
+##        real0 real1
+## model0   182    49
+## model1    25    58
+## 
+## $precision
+## [1] 0.6987952
+## 
+## $recall
+## [1] 0.5420561
+## 
+## $F1
+## [1] 0.6105263
+## 
+## $accuracy
+## [1] 0.7643312
+```
+
+
+## Графики на обучении
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-38-1.png)<!-- -->
+
+
+
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-40-1.png)<!-- -->
+
+```
+## $matrix
+##        real0 real1
+## model0    55    17
+## model1     0     6
+## 
+## $precision
+## [1] 1
+## 
+## $recall
+## [1] 0.2608696
+## 
+## $F1
+## [1] 0.4137931
+## 
+## $accuracy
+## [1] 0.7820513
+```
+
+
+![](diabetesNotebook_files/figure-docx/unnamed-chunk-41-1.png)<!-- -->
 
